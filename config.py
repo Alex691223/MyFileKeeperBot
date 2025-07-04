@@ -1,1 +1,2 @@
-API_TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE"
+import os
+API_TOKEN = os.getenv("API_TOKEN")
