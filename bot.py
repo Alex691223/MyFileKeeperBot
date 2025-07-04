@@ -1,9 +1,15 @@
-from aiogram import Bot, Dispatcher, types
-from aiogram.utils import executor
-from config import API_TOKEN
-from database import init_db
+import os
 import sqlite3
 from datetime import datetime
+
+from aiogram import Bot, Dispatcher, types
+from aiogram.utils import executor
+
+from database import init_db
+
+API_TOKEN = os.getenv("API_TOKEN")
+if not API_TOKEN:
+    raise ValueError("API_TOKEN is not set in environment variables")
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -13,8 +19,10 @@ init_db()
 def save_file(user_id, file_id, file_type, caption, category):
     conn = sqlite3.connect("files.db")
     cur = conn.cursor()
-    cur.execute('INSERT INTO files (user_id, file_id, file_type, caption, category, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-                (user_id, file_id, file_type, caption, category, datetime.utcnow()))
+    cur.execute('''
+        INSERT INTO files (user_id, file_id, file_type, caption, category, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (user_id, file_id, file_type, caption, category, datetime.utcnow()))
     conn.commit()
     conn.close()
 
@@ -43,7 +51,7 @@ async def handle_files(msg: types.Message):
         return
 
     file_id = file.file_id
-    file_type = getattr(file, 'mime_type', 'unknown')
+    file_type = getattr(file, 'mime_type', None) or 'unknown'
     caption = msg.caption or "Без описания"
     category = detect_category(file_type)
 
