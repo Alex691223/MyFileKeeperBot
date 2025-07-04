@@ -5,8 +5,11 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 from collections import defaultdict
 from datetime import datetime, timedelta
+import os
 
-API_TOKEN = 'YOUR_BOT_TOKEN_HERE'
+API_TOKEN = os.getenv("API_TOKEN")
+if not API_TOKEN:
+    raise ValueError("API_TOKEN is not set in environment variables")
 
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
@@ -34,8 +37,8 @@ def tr(user_id, ru, en):
 def get_main_kb(user_id):
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=tr(user_id, "🔍 Найти собеседника", "🔍 Find partner"))],
-            [KeyboardButton(text=tr(user_id, "⚙️ Настройки", "⚙️ Settings"))],
+            [KeyboardButton(text=tr(user_id, "🔍 Найти собеседника", "🔍 Find partner") )],
+            [KeyboardButton(text=tr(user_id, "⚙️ Настройки", "⚙️ Settings") )],
         ],
         resize_keyboard=True
     )
@@ -62,7 +65,7 @@ def get_lang_kb():
         keyboard=[
             [KeyboardButton(text="🇷🇺 Русский"), KeyboardButton(text="🇬🇧 English")],
         ],
-        resize_keyboard=True=True
+        resize_keyboard=True
     )
 
 def get_filter_kb(user_id):
