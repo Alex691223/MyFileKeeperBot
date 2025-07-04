@@ -3,6 +3,8 @@ import sqlite3
 def init_db():
     conn = sqlite3.connect("files.db")
     cur = conn.cursor()
+
+    # Таблица файлов
     cur.execute('''
         CREATE TABLE IF NOT EXISTS files (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,5 +16,15 @@ def init_db():
             created_at TEXT
         )
     ''')
+
+    # Таблица пользовательских категорий
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            name TEXT
+        )
+    ''')
+
     conn.commit()
     conn.close()
