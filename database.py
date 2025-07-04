@@ -26,5 +26,18 @@ def init_db():
         )
     ''')
 
+    # Таблица пользователей и статистики
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            avatar_file_id TEXT,
+            join_date TEXT,
+            message_count INTEGER DEFAULT 0
+        )
+    ''')
+
     conn.commit()
     conn.close()
