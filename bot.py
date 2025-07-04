@@ -1,239 +1,168 @@
-import asyncio
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.enums import ParseMode
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters import Command
-from collections import defaultdict
-from datetime import datetime, timedelta
 import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.utils import executor
+from aiogram.dispatcher.filters import Text
+from database import init_db, add_user, set_avatar, get_avatar, set_chat, remove_chat, get_partner, get_all_users, get_all_chats
+from config import API_TOKEN, ADMINS
 
-API_TOKEN = os.getenv("API_TOKEN")
-if not API_TOKEN:
-    raise ValueError("API_TOKEN is not set in environment variables")
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
 
-bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher()
-
-# ---------------- Данные ---------------- #
+init_db()
 
 waiting_users = set()
-active_chats = {}
-chat_start_time = {}
-user_profiles = {}
-message_timestamps = defaultdict(list)
+avatar_waiting = set()  # Пользователи, которые отправили /setavatar и ждут фото
 
-# Профили: {id: {'gender': 'm'/'f', 'language': 'ru'/'en', 'filter_gender': 'any'/'m'/'f'}}
-GENDERS = {'m': '👨 Мужчина', 'f': '👩 Женщина'}
-LANGS = {'ru': '🇷🇺 Русский', 'en': '🇬🇧 English'}
-
-# ---------------- Интерфейсы ---------------- #
-
-def get_lang(user_id):
-    return user_profiles.get(user_id, {}).get("language", "ru")
-
-def tr(user_id, ru, en):
-    return ru if get_lang(user_id) == "ru" else en
-
-def get_main_kb(user_id):
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=tr(user_id, "🔍 Найти собеседника", "🔍 Find partner") )],
-            [KeyboardButton(text=tr(user_id, "⚙️ Настройки", "⚙️ Settings") )],
-        ],
-        resize_keyboard=True
-    )
-
-def get_chat_kb(user_id):
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=tr(user_id, "⏭ Следующий", "⏭ Next")),
-             KeyboardButton(text=tr(user_id, "❌ Завершить чат", "❌ End chat"))],
-        ],
-        resize_keyboard=True
-    )
-
-def get_gender_kb():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="👨 Мужчина"), KeyboardButton(text="👩 Женщина")],
-        ],
-        resize_keyboard=True
-    )
-
-def get_lang_kb():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🇷🇺 Русский"), KeyboardButton(text="🇬🇧 English")],
-        ],
-        resize_keyboard=True
-    )
-
-def get_filter_kb(user_id):
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=tr(user_id, "👫 Любой пол", "👫 Any gender"))],
-            [KeyboardButton(text=tr(user_id, "👨 Только мужчины", "👨 Only men")),
-             KeyboardButton(text=tr(user_id, "👩 Только женщины", "👩 Only women"))],
-            [KeyboardButton(text=tr(user_id, "🔙 Назад", "🔙 Back"))],
-        ],
-        resize_keyboard=True
-    )
-
-# ---------------- Команды ---------------- #
-
-@dp.message(Command("start"))
-async def start(message: types.Message):
-    user_id = message.from_user.id
-    user_profiles[user_id] = {}
-    await message.answer("👋 Привет! Укажи свой пол:", reply_markup=get_gender_kb())
-
-@dp.message(F.text.in_({"👨 Мужчина", "👩 Женщина"}))
-async def gender_select(message: types.Message):
-    gender = "m" if "Мужчина" in message.text else "f"
-    user_profiles[message.from_user.id]["gender"] = gender
-    await message.answer("🌐 Выбери язык / Choose language:", reply_markup=get_lang_kb())
-
-@dp.message(F.text.in_({"🇷🇺 Русский", "🇬🇧 English"}))
-async def language_select(message: types.Message):
-    lang = "ru" if "Русский" in message.text else "en"
-    user_profiles[message.from_user.id]["language"] = lang
-    user_profiles[message.from_user.id]["filter_gender"] = "any"
-    await message.answer(tr(message.from_user.id, "✅ Готово! Меню ниже 👇", "✅ Done! Menu below 👇"),
-                         reply_markup=get_main_kb(message.from_user.id))
-
-@dp.message(F.text.in_({"⚙️ Настройки", "⚙️ Settings"}))
-async def settings(message: types.Message):
-    lang = get_lang(message.from_user.id)
-    await message.answer(tr(message.from_user.id, "Выберите фильтр для поиска собеседника:",
-                                            "Choose a gender filter:"),
-                         reply_markup=get_filter_kb(message.from_user.id))
-
-@dp.message(F.text.in_({"🔙 Назад", "🔙 Back"}))
-async def back_to_menu(message: types.Message):
-    await message.answer(tr(message.from_user.id, "Назад в меню", "Back to menu"),
-                         reply_markup=get_main_kb(message.from_user.id))
-
-@dp.message(F.text.in_({
-    "👫 Любой пол", "👨 Только мужчины", "👩 Только женщины",
-    "👫 Any gender", "👨 Only men", "👩 Only women"
-}))
-async def set_filter(message: types.Message):
-    uid = message.from_user.id
-    text = message.text
-
-    if "Any" in text or "Любой" in text:
-        user_profiles[uid]["filter_gender"] = "any"
-    elif "мужчины" in text or "men" in text:
-        user_profiles[uid]["filter_gender"] = "m"
-    elif "женщины" in text or "women" in text:
-        user_profiles[uid]["filter_gender"] = "f"
-
-    await message.answer(tr(uid, "✅ Фильтр обновлён!", "✅ Filter updated!"),
-                         reply_markup=get_main_kb(uid))
-
-# ---------------- Поиск и чат ---------------- #
-
-@dp.message(F.text.in_({"🔍 Найти собеседника", "🔍 Find partner"}))
-async def find_partner(message: types.Message):
-    user_id = message.from_user.id
-    user_profile = user_profiles.get(user_id)
-    if not user_profile:
-        await start(message)
-        return
-
-    if user_id in active_chats:
-        await message.answer(tr(user_id, "⚠️ Вы уже в чате.", "⚠️ You're already in chat."),
-                             reply_markup=get_chat_kb(user_id))
-        return
-
-    # Поиск подходящего собеседника
-    for partner_id in list(waiting_users):
-        partner_profile = user_profiles.get(partner_id)
-        if not partner_profile:
-            continue
-
-        # Фильтры
-        if (user_profile["filter_gender"] in ("any", partner_profile["gender"]) and
-            partner_profile["filter_gender"] in ("any", user_profile["gender"])):
-            waiting_users.remove(partner_id)
-            active_chats[user_id] = partner_id
-            active_chats[partner_id] = user_id
-            chat_start_time[user_id] = chat_start_time[partner_id] = datetime.now()
-
-            await message.answer(tr(user_id, "✅ Собеседник найден!", "✅ Partner found!"),
-                                 reply_markup=get_chat_kb(user_id))
-            await bot.send_message(partner_id, tr(partner_id, "✅ Собеседник найден!", "✅ Partner found!"),
-                                   reply_markup=get_chat_kb(partner_id))
-            return
-
-    # Если никого не нашли
+def add_to_waiting(user_id):
     waiting_users.add(user_id)
-    await message.answer(tr(user_id, "🔍 Поиск собеседника...", "🔍 Searching for a partner..."))
 
-@dp.message(F.text.in_({"❌ Завершить чат", "❌ End chat"}))
-async def end_chat(message: types.Message):
-    await terminate_chat(message.from_user.id, manual=True)
+def remove_from_waiting(user_id):
+    waiting_users.discard(user_id)
 
-@dp.message(F.text.in_({"⏭ Следующий", "⏭ Next"}))
-async def next_chat(message: types.Message):
-    await terminate_chat(message.from_user.id, manual=True)
-    await find_partner(message)
+@dp.message_handler(commands=["start"])
+async def start_handler(message: types.Message):
+    user_id = message.from_user.id
+    username = message.from_user.username or ""
+    add_user(user_id, username)
+    await message.reply(
+        "👋 Привет! Это анонимный чат-бот.\n\n"
+        "💬 Используй /next для поиска собеседника.\n"
+        "🛑 /stop для завершения чата.\n"
+        "📸 /setavatar чтобы установить аватар.\n"
+        "ℹ️ /help для справки."
+    )
 
-# ---------------- Завершение ---------------- #
+@dp.message_handler(commands=["help"])
+async def help_handler(message: types.Message):
+    await message.reply(
+        "Команды:\n"
+        "/next — найти собеседника\n"
+        "/stop — завершить чат\n"
+        "/setavatar — установить аватар\n"
+        "/help — это сообщение\n"
+        "Админ команды:\n"
+        "/stats — статистика бота\n"
+        "/users — список пользователей"
+    )
 
-async def terminate_chat(user_id: int, manual: bool = False):
-    partner_id = active_chats.pop(user_id, None)
-    chat_start_time.pop(user_id, None)
+@dp.message_handler(commands=["setavatar"])
+async def setavatar_cmd(message: types.Message):
+    user_id = message.from_user.id
+    avatar_waiting.add(user_id)
+    await message.reply("📸 Отправь фото, чтобы установить его как аватар.")
 
+@dp.message_handler(content_types=types.ContentType.PHOTO)
+async def photo_handler(message: types.Message):
+    user_id = message.from_user.id
+    if user_id in avatar_waiting:
+        photo = message.photo[-1]
+        set_avatar(user_id, photo.file_id)
+        avatar_waiting.discard(user_id)
+        await message.reply("✅ Аватар установлен.")
+    else:
+        # Если пользователь в чате — пересылаем фото партнеру
+        partner_id = get_partner(user_id)
+        if partner_id:
+            await bot.send_photo(partner_id, message.photo[-1].file_id, caption=message.caption or "")
+        else:
+            await message.reply("⚠️ Ты не в чате. Используй /next для поиска собеседника.")
+
+@dp.message_handler(commands=["next"])
+async def next_handler(message: types.Message):
+    user_id = message.from_user.id
+
+    if get_partner(user_id):
+        await message.reply("❗️ Ты уже в чате. Используй /stop, чтобы закончить его.")
+        return
+
+    if user_id in waiting_users:
+        await message.reply("⏳ Ты уже ищешь собеседника. Подожди.")
+        return
+
+    partner = None
+    for candidate in waiting_users:
+        if candidate != user_id:
+            partner = candidate
+            break
+
+    if partner:
+        set_chat(user_id, partner)
+        set_chat(partner, user_id)
+        remove_from_waiting(user_id)
+        remove_from_waiting(partner)
+        await bot.send_message(user_id, "✅ Собеседник найден! Начинайте общение.\nЧтобы закончить чат — /stop.")
+        await bot.send_message(partner, "✅ Собеседник найден! Начинайте общение.\nЧтобы закончить чат — /stop.")
+    else:
+        add_to_waiting(user_id)
+        await message.reply("🔎 Ищу для тебя собеседника...")
+
+@dp.message_handler(commands=["stop"])
+async def stop_handler(message: types.Message):
+    user_id = message.from_user.id
+    partner_id = get_partner(user_id)
     if partner_id:
-        active_chats.pop(partner_id, None)
-        chat_start_time.pop(partner_id, None)
-        try:
-            await bot.send_message(partner_id, "❌ Чат завершён.", reply_markup=get_main_kb(partner_id))
-        except:
-            pass
+        remove_chat(user_id)
+        remove_chat(partner_id)
+        await message.reply("🛑 Чат завершён.")
+        await bot.send_message(partner_id, "🛑 Твой собеседник завершил чат.")
+    elif user_id in waiting_users:
+        remove_from_waiting(user_id)
+        await message.reply("❌ Ты вышел из поиска собеседника.")
+    else:
+        await message.reply("ℹ️ Ты не в активном чате и не ищешь собеседника.")
 
-    if manual:
-        await bot.send_message(user_id, "✅ Чат завершён.", reply_markup=get_main_kb(user_id))
-
-# ---------------- Пересылка ---------------- #
-
-@dp.message()
-async def forward(message: types.Message):
-    uid = message.from_user.id
-    pid = active_chats.get(uid)
-    if not pid:
-        await message.answer(tr(uid, "Сначала найдите собеседника.", "Find a partner first."),
-                             reply_markup=get_main_kb(uid))
+@dp.message_handler(commands=["stats"])
+async def stats_handler(message: types.Message):
+    user_id = message.from_user.id
+    if user_id not in ADMINS:
+        await message.reply("❌ У тебя нет прав для использования этой команды.")
         return
 
-    now = datetime.now()
-    message_timestamps[uid] = [t for t in message_timestamps[uid] if now - t < timedelta(seconds=5)]
-    if len(message_timestamps[uid]) >= 5:
-        await message.answer("⏳ Подожди немного.")
+    users = get_all_users()
+    chats = get_all_chats()
+    text = f"📊 Статистика бота:\n\nПользователей: {len(users)}\nАктивных чатов: {len(chats)//2}"
+    await message.reply(text)
+
+@dp.message_handler(commands=["users"])
+async def users_handler(message: types.Message):
+    user_id = message.from_user.id
+    if user_id not in ADMINS:
+        await message.reply("❌ У тебя нет прав для использования этой команды.")
         return
 
-    message_timestamps[uid].append(now)
+    users = get_all_users()
+    if not users:
+        await message.reply("Список пользователей пуст.")
+        return
 
-    try:
-        if message.text:
-            await bot.send_message(pid, message.text)
-        elif message.photo:
-            await bot.send_photo(pid, photo=message.photo[-1].file_id, caption=message.caption or "")
-        elif message.sticker:
-            await bot.send_sticker(pid, message.sticker.file_id)
-        elif message.voice:
-            await bot.send_voice(pid, message.voice.file_id)
-        elif message.video:
-            await bot.send_video(pid, message.video.file_id)
-    except Exception as e:
-        await message.answer("⚠️ Ошибка отправки.")
+    text = "👥 Пользователи бота:\n"
+    for uid, uname in users:
+        text += f"ID: {uid}, username: @{uname if uname else '-'}\n"
+    await message.reply(text)
 
-# ---------------- Запуск ---------------- #
+@dp.message_handler()
+async def relay_message(message: types.Message):
+    user_id = message.from_user.id
+    partner_id = get_partner(user_id)
 
-async def main():
-    print("Бот запущен.")
-    await dp.start_polling(bot)
+    if not partner_id:
+        await message.reply("⚠️ Ты не в чате. Используй /next для поиска собеседника.")
+        return
+
+    # Пересылаем сообщения партнеру (текст, стикеры, фото и др.)
+    if message.text:
+        await bot.send_message(partner_id, message.text)
+    elif message.sticker:
+        await bot.send_sticker(partner_id, message.sticker.file_id)
+    elif message.photo:
+        await bot.send_photo(partner_id, message.photo[-1].file_id, caption=message.caption or "")
+    elif message.video:
+        await bot.send_video(partner_id, message.video.file_id, caption=message.caption or "")
+    elif message.voice:
+        await bot.send_voice(partner_id, message.voice.file_id, caption=message.caption or "")
+    else:
+        await message.reply("⚠️ Этот тип сообщения пока не поддерживается.")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    executor.start_polling(dp, skip_updates=True)
+
