@@ -1,2 +1,1 @@
-aiogram==2.25.2
-aiohttp
+aiogram==3.5.0
