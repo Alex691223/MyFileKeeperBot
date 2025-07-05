@@ -1,33 +1,43 @@
-import os
 import asyncio
-from aiohttp import web
+import logging
+import os
 from aiogram import Bot, Dispatcher
-from handlers import user, group, admin  # твои роутеры
+from aiogram.types import BotCommand, ParseMode
+from aiogram.filters import Command
+from handlers import user, admin
+from dotenv import load_dotenv
 
-BOT_TOKEN = "7152364773:AAHhlKTUfQcoYz5myyxYm1FoPpzU9j-q9vU"
+load_dotenv()
 
-async def handle(request):
-    return web.Response(text="OK")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN is not set in .env file")
 
-async def start_webserver():
-    app = web.Application()
-    app.add_routes([web.get('/', handle)])
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.environ.get("PORT", 8000))
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
-    print(f"HTTP server started on port {port}")
+logging.basicConfig(level=logging.INFO)
+
+bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
+dp = Dispatcher()
+
+# Подключаем роутеры
+dp.include_routers(user.router, admin.router)
+
+async def set_commands():
+    commands = [
+        BotCommand(command="start", description="Запустить бота"),
+        BotCommand(command="help", description="Помощь"),
+        BotCommand(command="mute", description="Заблокировать пользователя"),
+        BotCommand(command="ban", description="Забанить пользователя"),
+        BotCommand(command="kick", description="Кикнуть пользователя"),
+        BotCommand(command="stats", description="Статистика")
+    ]
+    await bot.set_my_commands(commands)
 
 async def main():
-    bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
-    dp = Dispatcher()
-    dp.include_router(user.router)
-    dp.include_router(group.router)
-    dp.include_router(admin.router)
-
-    await start_webserver()  # запускаем HTTP сервер
-    await dp.start_polling(bot)  # запускаем бота
+    await set_commands()
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
