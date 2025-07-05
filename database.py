@@ -40,3 +40,9 @@ async def get_all_users():
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT user_id FROM users") as cursor:
             return [row[0] for row in await cursor.fetchall()]
+
+
+async def get_all_groups():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT group_id FROM groups") as cursor:
+            return [row[0] for row in await cursor.fetchall()]
