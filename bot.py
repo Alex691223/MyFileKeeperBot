@@ -6,6 +6,8 @@ from handlers import user, group, admin
 from middlewares.user_agreement import AgreementMiddleware
 from database import init_db
 
+print("TOKEN IS:", BOT_TOKEN)
+
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 
