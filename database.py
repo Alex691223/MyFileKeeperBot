@@ -52,3 +52,7 @@ async def get_all_groups():
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT group_id FROM groups") as cursor:
             return [row[0] for row in await cursor.fetchall()]
+
+async def accept_user(user_id: int):
+    # логика принятия пользовательского соглашения, например, обновить поле в БД
+    pass
