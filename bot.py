@@ -2,10 +2,9 @@ import asyncio
 import logging
 import os
 from aiogram import Bot, Dispatcher
-from aiogram.types import BotCommand, ParseMode
-from aiogram.filters import Command
-from handlers import user, admin
-from dotenv import load_dotenv
+from aiogram.enums.parse_mode import ParseMode
+from aiogram.types import BotCommand
+
 
 load_dotenv()
 
