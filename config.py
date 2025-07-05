@@ -1,4 +1,4 @@
-API_ID = 123456
+API_ID = 29958171
 API_HASH = "your_api_hash"
 BOT_TOKEN = "7152364773:AAHhlKTUfQcoYz5myyxYm1FoPpzU9j-q9vU"
 OWNER_ID = 954426279  # Ваш Telegram ID
