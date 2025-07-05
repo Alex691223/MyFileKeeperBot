@@ -1,6 +1,6 @@
 from pyrogram import Client
 from config import API_ID, API_HASH, BOT_TOKEN
-import modules.moderation
+from telegram_iris_bot.modules import moderation
 import modules.automod
 import modules.logging
 import modules.greetings
