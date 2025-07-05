@@ -1,6 +1,6 @@
 import asyncio
 from aiogram import Bot, Dispatcher
-from aiogram.types import ParseMode
+from aiogram.enums import ParseMode
 from config import BOT_TOKEN
 from handlers import admin
 
