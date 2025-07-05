@@ -33,3 +33,44 @@ async def send_to_group(message: types.Message):
         await message.answer("Сообщение отправлено.")
     except Exception as e:
         await message.answer(f"Ошибка: {e}")
+class BroadcastStates(StatesGroup):
+    waiting_text = State()
+    confirm = State()
+@router.message(Command("broadcast"))
+@router.message(F.text == "📢 Рассылка")
+async def start_broadcast(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer("Введи текст для рассылки:")
+    await state.set_state(BroadcastStates.waiting_text)
+@router.message(BroadcastStates.waiting_text)
+async def confirm_broadcast(message: types.Message, state: FSMContext):
+    await state.update_data(text=message.text)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_send"),
+         InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_send")]
+    ])
+    await message.answer(f"Ты хочешь отправить:\n\n{message.text}", reply_markup=kb)
+    await state.set_state(BroadcastStates.confirm)
+@router.callback_query(F.data == "confirm_send")
+async def do_broadcast(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    text = data.get("text")
+    users = await get_all_users()
+    count = 0
+
+    for user_id in users:
+        try:
+            await callback.bot.send_message(user_id, text)
+            count += 1
+        except:
+            continue
+
+    await callback.message.edit_text(f"Рассылка завершена. Успешно: {count}")
+    await state.clear()
+
+@router.callback_query(F.data == "cancel_send")
+async def cancel_broadcast(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("❌ Рассылка отменена.")
+    await state.clear()
