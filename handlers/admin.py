@@ -3,7 +3,9 @@ from aiogram.types import Message
 from config import ADMIN_ID
 from database import count_users, count_groups
 from aiogram.filters.command import Command
-from bot import bot
+from config import BOT_TOKEN  # если нужно
+from aiogram import Bot
+bot = Bot(token=BOT_TOKEN)
 
 router = Router()
 
