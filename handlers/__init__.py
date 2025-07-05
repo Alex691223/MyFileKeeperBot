@@ -1,1 +1,1 @@
-# init file for handlers
+# просто init
