@@ -36,3 +36,7 @@ async def count_groups():
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT COUNT(*) FROM groups;") as cursor:
             return (await cursor.fetchone())[0]
+async def get_all_users():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT user_id FROM users") as cursor:
+            return [row[0] for row in await cursor.fetchall()]
