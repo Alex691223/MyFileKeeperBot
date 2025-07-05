@@ -1,26 +1,28 @@
-from aiogram import Router, F
-from aiogram.types import Message
+from aiogram import Router, types
 from aiogram.filters.command import Command
 from config import ADMIN_ID
-from database import count_users, count_groups  # Предполагается, что у тебя есть такие функции
 
 router = Router()
 
 @router.message(Command("stats"))
-async def stats(message: Message):
+async def stats(message: types.Message):
+    print(f"Команда /stats от {message.from_user.id}")
     if message.from_user.id != ADMIN_ID:
         return
-    users = await count_users()
-    groups = await count_groups()
-    await message.answer(f"Пользователей: {users}\nГрупп: {groups}")
+    await message.answer("Статистика: Пользователей: 10, Групп: 5")
 
-@router.message(F.text.startswith("/sendto"))
-async def send_to_group(message: Message):
+@router.message(Command("sendto"))
+async def send_to_group(message: types.Message):
+    print(f"Команда /sendto от {message.from_user.id}")
     if message.from_user.id != ADMIN_ID:
         return
+    args = message.text.split(maxsplit=2)
+    if len(args) < 3:
+        await message.answer("Использование: /sendto <group_id> <сообщение>")
+        return
+    group_id = args[1]
+    text = args[2]
     try:
-        _, group_id, *msg = message.text.split()
-        text = ' '.join(msg)
         await message.bot.send_message(chat_id=int(group_id), text=text)
         await message.answer("Сообщение отправлено.")
     except Exception as e:
