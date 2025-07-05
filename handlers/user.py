@@ -1,27 +1,39 @@
-from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from database import add_user, accept_user
+from aiogram import Router
+from aiogram.types import Message
+from aiogram.filters import Command, Text
+from keyboard import main_kb
 
 router = Router()
 
-class AgreementFSM(StatesGroup):
-    waiting = State()
+@router.message(Command("start"))
+async def start_handler(message: Message):
+    await message.answer(
+        "Привет! Я модератор бот. Используй меню кнопок для команд.",
+        reply_markup=main_kb()
+    )
 
-@router.message(F.text == "/start")
-async def start(message: Message, state: FSMContext):
-    await add_user(message.from_user.id)
-    with open("texts/agreement_ru.txt", encoding="utf-8") as f:
-        agreement_text = f.read()
-    markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Принять", callback_data="agree")]
-    ])
-    await message.answer(agreement_text, reply_markup=markup)
-    await state.set_state(AgreementFSM.waiting)
+@router.message(Command("help"))
+async def help_handler(message: Message):
+    await message.answer(
+        "Доступные команды:\n"
+        "/mute - Замутить пользователя\n"
+        "/ban - Забанить пользователя\n"
+        "/kick - Кикнуть пользователя\n"
+        "/stats - Показать статистику"
+    )
 
-@router.callback_query(F.data == "agree")
-async def agree_callback(callback: CallbackQuery, state: FSMContext):
-    await accept_user(callback.from_user.id)
-    await state.clear()
-    await callback.message.edit_text("Спасибо, вы приняли условия!")
+@router.message(Text(text=["📢 Рассылка", "📊 Статистика", "🔨 Мут", "❌ Бан", "👢 Кик"]))
+async def buttons_handler(message: Message):
+    text = message.text
+    if text == "📢 Рассылка":
+        await message.answer("Рассылка - доступна только для админов.")
+    elif text == "📊 Статистика":
+        await message.answer("Показ статистики в разработке.")
+    elif text == "🔨 Мут":
+        await message.answer("Для мутирования используйте команду /mute.")
+    elif text == "❌ Бан":
+        await message.answer("Для бана используйте команду /ban.")
+    elif text == "👢 Кик":
+        await message.answer("Для кика используйте команду /kick.")
+    else:
+        await message.answer("Команда не распознана.")
