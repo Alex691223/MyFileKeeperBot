@@ -1,15 +1,15 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
-BAD_WORDS = ["badword1", "badword2"]
+BAD_WORDS = ["мат1", "мат2", "example"]
 CAPS_THRESHOLD = 70
 
 def register_handlers(app: Client):
     @app.on_message(filters.group & filters.text)
-    async def moderate_message(_, msg: Message):
+    async def auto_moderate(_, msg: Message):
         text = msg.text
 
-        if any(word in text.lower() for word in BAD_WORDS):
+        if any(bad in text.lower() for bad in BAD_WORDS):
             await msg.delete()
             return await msg.reply("🚫 Мат запрещён.")
 
