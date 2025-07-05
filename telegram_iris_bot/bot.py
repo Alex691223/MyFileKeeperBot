@@ -4,7 +4,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from pyrogram import Client
 from config import API_ID, API_HASH, BOT_TOKEN
-from telegram_iris_bot.modules import moderation
+from modules import moderation
+from modules import automod
 import modules.automod
 import modules.logging
 import modules.greetings
