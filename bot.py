@@ -1,39 +1,33 @@
+import os
 import asyncio
+from aiohttp import web
 from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import BotCommand
-from config import BOT_TOKEN
-from handlers import admin, group
-from database import init_db
+from handlers import user, group, admin  # твои роутеры
 
-bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher(storage=MemoryStorage())
+BOT_TOKEN = "7152364773:AAHhlKTUfQcoYz5myyxYm1FoPpzU9j-q9vU"
 
-dp.include_router(admin.router)
-dp.include_router(group.router)
+async def handle(request):
+    return web.Response(text="OK")
 
-# 🔘 Команды Telegram
-async def set_commands():
-    commands = [
-        BotCommand(command="admin", description="Открыть админ-панель"),
-        BotCommand(command="broadcast", description="Начать рассылку"),
-        BotCommand(command="kick", description="Кик пользователя"),
-        BotCommand(command="ban", description="Бан пользователя"),
-        BotCommand(command="unban", description="Разбан"),
-        BotCommand(command="mute", description="Мут пользователя"),
-        BotCommand(command="unmute", description="Снять мут"),
-    ]
-    await bot.set_my_commands(commands)
+async def start_webserver():
+    app = web.Application()
+    app.add_routes([web.get('/', handle)])
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 8000))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"HTTP server started on port {port}")
 
-# 🚀 Запуск
 async def main():
-    print("📁 Инициализация базы данных...")
-    await init_db()
-    print("✅ База готова.")
-    await set_commands()
-    print("🤖 Бот запущен.")
-    await dp.start_polling(bot)
+    bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
+    dp = Dispatcher()
+    dp.include_router(user.router)
+    dp.include_router(group.router)
+    dp.include_router(admin.router)
+
+    await start_webserver()  # запускаем HTTP сервер
+    await dp.start_polling(bot)  # запускаем бота
 
 if __name__ == "__main__":
     asyncio.run(main())
