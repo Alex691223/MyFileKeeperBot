@@ -1,59 +1,88 @@
-from aiogram import F
+from aiogram import Router, types, F
+from aiogram.filters.command import Command
+from aiogram.types import (
+    Message, ReplyKeyboardMarkup, KeyboardButton,
+    ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
+)
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import get_all_users
-
-
-from aiogram import Router, types
-from aiogram.filters.command import Command
 from config import ADMIN_ID
+from database import count_users, count_groups, get_all_groups, get_all_users
 
 router = Router()
 
-@router.message(Command("stats"))
-async def stats(message: types.Message):
-    print(f"Команда /stats от {message.from_user.id}")
-    if message.from_user.id != ADMIN_ID:
-        return
-    await message.answer("Статистика: Пользователей: 10, Групп: 5")
-
-@router.message(Command("sendto"))
-async def send_to_group(message: types.Message):
-    print(f"Команда /sendto от {message.from_user.id}")
-    if message.from_user.id != ADMIN_ID:
-        return
-    args = message.text.split(maxsplit=2)
-    if len(args) < 3:
-        await message.answer("Использование: /sendto <group_id> <сообщение>")
-        return
-    group_id = args[1]
-    text = args[2]
-    try:
-        await message.bot.send_message(chat_id=int(group_id), text=text)
-        await message.answer("Сообщение отправлено.")
-    except Exception as e:
-        await message.answer(f"Ошибка: {e}")
+# 📋 Состояния для рассылки
 class BroadcastStates(StatesGroup):
     waiting_text = State()
     confirm = State()
-@router.message(Command("broadcast"))
-@router.message(F.text == "📢 Рассылка")
-async def start_broadcast(message: types.Message, state: FSMContext):
+
+# 🔘 Команда: открыть админ-панель
+@router.message(Command("admin"))
+async def admin_panel(message: Message):
     if message.from_user.id != ADMIN_ID:
         return
-    await message.answer("Введи текст для рассылки:")
-    await state.set_state(BroadcastStates.waiting_text)
-@router.message(BroadcastStates.waiting_text)
-async def confirm_broadcast(message: types.Message, state: FSMContext):
-    await state.update_data(text=message.text)
+    kb = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📊 Статистика")],
+            [KeyboardButton(text="📢 Рассылка")],
+            [KeyboardButton(text="📜 Группы")],
+            [KeyboardButton(text="👥 Пользователи")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("🔧 Админ-панель", reply_markup=kb)
 
+# 📊 Статистика
+@router.message(F.text == "📊 Статистика")
+@router.message(Command("stats"))
+async def stats(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    users = await count_users()
+    groups = await count_groups()
+    await message.answer(f"📊 Статистика:\n👥 Пользователей: {users}\n👥 Групп: {groups}")
+
+# 📜 Список групп
+@router.message(F.text == "📜 Группы")
+async def list_groups(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    groups = await get_all_groups()
+    if not groups:
+        await message.answer("⚠️ Групп нет.")
+    else:
+        text = "📜 Список групп:\n" + "\n".join([str(g) for g in groups])
+        await message.answer(text)
+
+# 👥 Список пользователей
+@router.message(F.text == "👥 Пользователи")
+async def list_users(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    users = await get_all_users()
+    await message.answer(f"👥 Всего пользователей: {len(users)}")
+
+# 📢 Запуск рассылки
+@router.message(Command("broadcast"))
+@router.message(F.text == "📢 Рассылка")
+async def start_broadcast(message: Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer("✉️ Введи текст для рассылки:", reply_markup=ReplyKeyboardRemove())
+    await state.set_state(BroadcastStates.waiting_text)
+
+# 📢 Подтверждение рассылки
+@router.message(BroadcastStates.waiting_text)
+async def confirm_broadcast(message: Message, state: FSMContext):
+    await state.update_data(text=message.text)
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_send"),
          InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_send")]
     ])
-    await message.answer(f"Ты хочешь отправить:\n\n{message.text}", reply_markup=kb)
+    await message.answer(f"Вот текст рассылки:\n\n{message.text}", reply_markup=kb)
     await state.set_state(BroadcastStates.confirm)
+
+# ✅ Отправка рассылки
 @router.callback_query(F.data == "confirm_send")
 async def do_broadcast(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -68,9 +97,10 @@ async def do_broadcast(callback: types.CallbackQuery, state: FSMContext):
         except:
             continue
 
-    await callback.message.edit_text(f"Рассылка завершена. Успешно: {count}")
+    await callback.message.edit_text(f"✅ Рассылка завершена.\nУспешно отправлено: {count}")
     await state.clear()
 
+# ❌ Отмена рассылки
 @router.callback_query(F.data == "cancel_send")
 async def cancel_broadcast(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_text("❌ Рассылка отменена.")
