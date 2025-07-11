@@ -1,7 +1,3 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from aiogram import Router, types
 import openai
 from config import OPENAI_API_KEY
