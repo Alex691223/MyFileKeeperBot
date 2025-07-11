@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from aiogram import Router, types
 import openai
 from config import OPENAI_API_KEY
@@ -30,8 +34,10 @@ async def character_chat(message: types.Message):
     prompt = f"{PERSONAS[persona]}\n\nПользователь: {message.text}\nПерсонаж:"
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": prompt}]
+        messages=[
+            {"role": "system", "content": PERSONAS[persona]},
+            {"role": "user", "content": message.text}
+        ]
     )
     reply = response.choices[0].message.content.strip()
     await message.answer(reply)
-# Handler for /chat command and message routing
