@@ -1,10 +1,9 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))  # 🔥 добавляем путь
 
 import asyncio
 from aiogram import Bot, Dispatcher
-from aiogram.types import Message
 from config import BOT_TOKEN
 from handlers import start, chat
 from database.models import init_db
