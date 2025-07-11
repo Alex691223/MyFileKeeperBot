@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: tg-moderator-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: BOT_TOKEN
+        value: <твой_токен>
+      - key: SUPERADMIN_ID
+        value: "954426279"
