@@ -26,3 +26,10 @@ def get_user_role(user_id):
     row = c.fetchone()
     conn.close()
     return row[0] if row else "user"
+
+def set_user_role(user_id, role):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE users SET role = ? WHERE user_id = ?", (role, user_id))
+    conn.commit()
+    conn.close()
