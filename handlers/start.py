@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
@@ -26,4 +26,3 @@ async def language_chosen(message: types.Message, state: FSMContext):
         keyboard=[[KeyboardButton(text=t("agree_button", message.text))]],
         resize_keyboard=True
     ))
-
