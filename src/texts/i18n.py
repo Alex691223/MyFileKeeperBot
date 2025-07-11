@@ -1,31 +1,22 @@
 translations = {
-    "start_choose_lang": {
+    "choose_language": {
         "Русский": "Выберите язык:",
-        "Deutsch": "Wähle eine Sprache:",
+        "Deutsch": "Sprache auswählen:",
         "English": "Choose a language:"
     },
     "agree_prompt": {
-        "Русский": "Перед использованием подтвердите согласие с правилами.",
-        "Deutsch": "Bitte bestätigen Sie die Nutzungsbedingungen.",
+        "Русский": "Пожалуйста, согласитесь с условиями перед использованием.",
+        "Deutsch": "Bitte stimmen Sie den Bedingungen zu, bevor Sie fortfahren.",
         "English": "Please agree to the terms before using."
     },
-    "agree_button": {
-        "Русский": "Согласен",
-        "Deutsch": "Einverstanden",
-        "English": "Agree"
-    },
-    "choose_persona": {
-        "Русский": "Пожалуйста, укажите персонажа в сообщении (например, 'философ', 'кот', 'гопник'...).",
-        "Deutsch": "Bitte gib eine Figur im Text an (z.B. 'Philosoph', 'Katze', 'Gopnik'...).",
-        "English": "Please specify a character in your message (e.g., 'philosopher', 'cat', 'gopnik'...)."
+    "rules_text": {
+        "Русский": "Перед использованием вы должны согласиться с условиями использования. Здесь может быть ссылка или текст.",
+        "Deutsch": "Bevor Sie fortfahren, müssen Sie den Nutzungsbedingungen zustimmen. Hier könnte ein Link stehen.",
+        "English": "Before using the bot, you must agree to the terms of use. Insert link or text here."
     }
 }
 
 
-def t(key, lang="Русский"):
-    """
-    Возвращает перевод по ключу и языку. Если перевода нет, возвращает английский или сам ключ.
-    """
-    if key in translations and lang in translations[key]:
-        return translations[key][lang]
-    return translations.get(key, {}).get("English", key)
+def t(key: str, lang: str) -> str:
+    # Найдём текст по ключу и языку, или вернем английскую версию
+    return translations.get(key, {}).get(lang, translations.get(key, {}).get("English", ""))
