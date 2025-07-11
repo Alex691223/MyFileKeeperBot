@@ -6,6 +6,6 @@ services:
     startCommand: python bot.py
     envVars:
       - key: BOT_TOKEN
-        value: <твой_токен>
+        value: 7152364773:AAHhlKTUfQcoYz5myyxYm1FoPpzU9j-q9vU
       - key: SUPERADMIN_ID
         value: "954426279"
