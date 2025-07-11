@@ -1,10 +1,21 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-def get_persona_keyboard():
-    keyboard = [
-        [InlineKeyboardButton(text="🧠 Философ", callback_data="persona_философ")],
-        [InlineKeyboardButton(text="😼 Кот", callback_data="persona_кот")],
-        [InlineKeyboardButton(text="🎒 Школьник", callback_data="persona_школьник")],
-        [InlineKeyboardButton(text="🧢 Гопник", callback_data="persona_гопник")]
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+def language_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang:Русский"),
+            InlineKeyboardButton(text="🇩🇪 Deutsch", callback_data="set_lang:Deutsch"),
+            InlineKeyboardButton(text="🇬🇧 English", callback_data="set_lang:English"),
+        ]
+    ])
+
+def agree_keyboard(lang: str) -> InlineKeyboardMarkup:
+    text = {
+        "Русский": "Согласен",
+        "Deutsch": "Zustimmen",
+        "English": "Agree"
+    }.get(lang, "Agree")
+    
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=text, callback_data="agree")]
+    ])
