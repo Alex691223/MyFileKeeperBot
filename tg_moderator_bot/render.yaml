@@ -6,6 +6,6 @@ services:
     startCommand: python tg_moderator_bot/bot.py
     envVars:
       - key: BOT_TOKEN
-        value: <твое_значение>
+        value: <твой_токен>
       - key: SUPERADMIN_ID
         value: "954426279"
