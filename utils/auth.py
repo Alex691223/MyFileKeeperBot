@@ -19,13 +19,19 @@ def activate_user(user_id, username):
 def is_superadmin(user_id):
     return user_id == SUPERADMIN_ID
 
-def get_user_role(user_id):
+def get_user_role(user_id, chat_admins: list = None):
+    """
+    Возвращает роль из базы, но если пользователь админ чата (по Telegram), возвращает 'admin'.
+    """
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT role FROM users WHERE user_id = ?", (user_id,))
     row = c.fetchone()
     conn.close()
-    return row[0] if row else "user"
+    role = row[0] if row else "user"
+    if chat_admins and user_id in chat_admins:
+        return "admin"
+    return role
 
 def set_user_role(user_id, role):
     conn = sqlite3.connect(DB_PATH)
