@@ -1,13 +1,12 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from config import SUPPORTED_LANGUAGES
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__ + '/../..')))
-
 from database.models import set_user_language
-
 from texts.i18n import t
 
 router = Router()
@@ -27,3 +26,4 @@ async def language_chosen(message: types.Message, state: FSMContext):
         keyboard=[[KeyboardButton(text=t("agree_button", message.text))]],
         resize_keyboard=True
     ))
+
