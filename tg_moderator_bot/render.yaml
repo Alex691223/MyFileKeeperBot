@@ -2,8 +2,8 @@ services:
   - type: web
     name: tg-moderator-bot
     env: python
-    buildCommand: pip install -r tg_moderator_bot/requirements.txt
     startCommand: python tg_moderator_bot/bot.py
+    buildCommand: pip install -r tg_moderator_bot/requirements.txt
     envVars:
       - key: BOT_TOKEN
         value: <твой_токен>
