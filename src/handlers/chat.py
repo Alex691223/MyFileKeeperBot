@@ -1,38 +1,38 @@
-from aiogram import Router, types
-import openai
-from config import OPENAI_API_KEY
-from database.models import get_user_language
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
+
+from services.personas import personas
+from services.openai_api import ask_gpt
+from keyboards.personas import persona_keyboard
 from texts.i18n import t
 
 router = Router()
-openai.api_key = OPENAI_API_KEY
 
-PERSONAS = {
-    "философ": "Ты философ. Говори мудро, медленно, рассудительно.",
-    "гопник": "Ты уличный гопник. Груби, используй уличный сленг.",
-    "кот": "Ты игривый кот. Мяукай, веди себя мило.",
-    "школьник": "Ты 12-летний школьник. Говори весело и по-детски."
-}
+@router.message(F.text.lower().in_(["персонаж", "character", "роль"]))
+async def ask_to_choose(message: Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get("lang", "English")
+    await message.answer(t("choose_persona", lang), reply_markup=persona_keyboard())
+
+@router.callback_query(F.data.startswith("persona:"))
+async def set_persona(callback: CallbackQuery, state: FSMContext):
+    persona_name = callback.data.split(":")[1]
+    await state.update_data(persona=persona_name)
+    await callback.message.edit_text(f"✅ Персонаж выбран: {persona_name}")
+    await callback.answer()
 
 @router.message()
-async def character_chat(message: types.Message):
-    lang = get_user_language(message.from_user.id)
-    persona = None
-    for key in PERSONAS:
-        if key in message.text.lower():
-            persona = key
-            break
+async def character_chat(message: Message, state: FSMContext):
+    data = await state.get_data()
+    persona = data.get("persona")
+    lang = data.get("lang", "English")
 
     if not persona:
-        await message.answer(t("choose_persona", lang))
+        await message.answer(t("choose_persona", lang), reply_markup=persona_keyboard())
         return
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": PERSONAS[persona]},
-            {"role": "user", "content": message.text}
-        ]
-    )
-    reply = response.choices[0].message.content.strip()
+    reply = await ask_gpt(message.text, persona)
+    if not reply.strip():
+        reply = "⚠️ Ответ пуст. Попробуйте снова."
     await message.answer(reply)
